@@ -21,12 +21,20 @@ import (
 )
 
 const (
-	wechatSuccess = "SUCCESS"
-	wechatFail    = "FAIL"
+	wechatSuccess              = "SUCCESS"
+	wechatFail                 = "FAIL"
+	WechatTradeStateSuccess    = "SUCCESS"
+	WechatTradeStateRefund     = "REFUND"
+	WechatTradeStateNopay      = "NOTPAY"
+	WechatTradeStateClosed     = "CLOSED"
+	WechatTradeStateRevoked    = "REVOKED"
+	WechatTradeStateUserPaying = "USERPAYING"
+	WechatTradeStatePayError   = "PAYERROR"
 
 	wechatHost             = "https://api.mch.weixin.qq.com"
 	wechatPathUnifiedOrder = "/pay/unifiedorder"
 	wechatPathRefund       = "/secapi/pay/refund"
+	wechatPathOrderQuery   = "/pay/orderquery"
 
 	WechatTradeTypeNative = "NATIVE"
 )
@@ -42,6 +50,12 @@ type wechatError struct {
 	ResultMsg  string `xml:"result_msg"`
 	ErrCode    string `xml:"err_code"`
 	ErrCodeDes string `xml:"err_code_des"`
+	AppID      string `xml:"appid"`
+	MchID      string `xml:"mch_id"`
+	NonceStr   string `xml:"nonce_str"`
+	Sign       string `xml:"sign"`
+	SignType   string `xml:"sign_type"`
+	DeviceInfo string `xml:"device_info"`
 }
 
 func NewWechatApi(conf config.WechatConfig) (*wechatApi) {
@@ -90,7 +104,7 @@ func (wa *wechatApi) sign(data map[string]string) string {
 }
 
 func (wa *wechatApi) Post(api string, data map[string]string) (map[string]string, []byte, error) {
-	path.Join(wechatHost, api)
+	apiURL := wechatHost + path.Join("/", api)
 	data["mch_id"] = wa.conf.MchID
 	data["sign_type"] = wa.conf.SignType
 	data["nonce_str"] = strconv.Itoa(rand.New(rand.NewSource(time.Now().Unix())).Int())
@@ -100,7 +114,7 @@ func (wa *wechatApi) Post(api string, data map[string]string) (map[string]string
 	if err != nil {
 		return nil, nil, err
 	}
-	body, err := utils.Post("https://api.mch.weixin.qq.com/pay/unifiedorder", "application/xml", raw)
+	body, err := utils.Post(apiURL, "application/xml", raw)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -138,14 +152,9 @@ type WechatApiOrder struct {
 
 type WechatUnifiedOrderResponse struct {
 	wechatError
-	AppID      string `xml:"appid"`
-	MchID      string `xml:"mch_id"`
-	DeviceInfo string `xml:"device_info"`
-	NonceStr   string `xml:"nonce_str"`
-	Sign       string `xml:"sign"`
-	TradeType  string `xml:"trade_type"`
-	PrepayID   string `xml:"prepay_id"`
-	CodeURL    string `xml:"code_url"`
+	TradeType string `xml:"trade_type"`
+	PrepayID  string `xml:"prepay_id"`
+	CodeURL   string `xml:"code_url"`
 }
 
 func (wa *wechatApi) UnifiedOrder(order WechatApiOrder) (WechatUnifiedOrderResponse, []byte, error) {
@@ -163,6 +172,36 @@ func (wa *wechatApi) UnifiedOrder(order WechatApiOrder) (WechatUnifiedOrderRespo
 	}
 	var response WechatUnifiedOrderResponse
 	_, raw, err := wa.Post(wechatPathUnifiedOrder, data)
+	xml.Unmarshal(raw, &response)
+	return response, raw, err
+}
+
+//查询订单接口
+type WechatOrderQueryResponse struct {
+	wechatError
+	OpenID             string `xml:"open_id"`
+	IsSubscribe        string `xml:"is_subscribe"`
+	TradeType          string `xml:"trade_type"`
+	TradeState         string `xml:"trade_state"`
+	BankType           string `xml:"bank_type"`
+	TotalFee           string `xml:"total_fee"`
+	SettlementTotalFee string `xml:"settlement_total_fee"`
+	FeeType            string `xml:"fee_type"`
+	CashFee            string `xml:"cash_fee"`
+	CashFeeType        string `xml:"cash_fee_type"`
+	TransactionID      string `xml:"transaction_id"`
+	OutTradeNo         string `xml:"out_trade_no"`
+	TimeEnd            string `xml:"time_end"`
+}
+
+func (wa *wechatApi) OrderQuery(appID, orderNo, transactionId string) (WechatOrderQueryResponse, []byte, error) {
+	data := map[string]string{
+		"appid":          appID,
+		"out_trade_no":   orderNo,
+		"transaction_id": transactionId,
+	}
+	_, raw, err := wa.Post(wechatPathOrderQuery, data)
+	var response WechatOrderQueryResponse
 	xml.Unmarshal(raw, &response)
 	return response, raw, err
 }
@@ -194,15 +233,6 @@ func (wa *wechatApi) Refund(refund WechatApiRefund) {
 //支付回调校验
 type WechatApiPayNotifyData struct {
 	wechatError
-	AppID              string `xml:"app_id"`
-	MchID              string `xml:"mch_id"`
-	DeviceInfo         string `xml:"device_info"`
-	NonceStr           string `xml:"nonce_str"`
-	Sign               string `xml:"sign"`
-	SignType           string `xml:"sign_type"`
-	ResultCode         string `xml:"result_code"`
-	ErrCode            string `xml:"err_code"`
-	ErrCodeDes         string `xml:"err_code_des"`
 	OpenID             string `xml:"openid"`
 	IsSubscribe        string `xml:"is_subscribe"`
 	TradeType          string `xml:"trade_type"`
