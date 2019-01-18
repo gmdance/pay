@@ -1,7 +1,7 @@
 package api
 
 import (
-	"github.com/gmdance/pay/common/config"
+	"github.com/gmdance/pay/config"
 	"strconv"
 	"testing"
 	"time"
