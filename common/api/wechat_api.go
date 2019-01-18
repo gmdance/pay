@@ -263,5 +263,6 @@ func (wa *wechatApi) PayNotify(raw string) (*WechatApiPayNotifyData, error) {
 	return &notifyData, err
 }
 
-func (wa *wechatApi) NotifySuccess() {
+func (wa *wechatApi) NotifySuccess() string {
+	return "<xml><return_code><![CDATA[SUCCESS]]></return_code><return_msg><![CDATA[OK]]></return_msg></xml>"
 }
