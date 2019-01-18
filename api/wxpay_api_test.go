@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	conf = config.WechatConfig{
+	conf = config.WxpayConfig{
 		MchID:        "1900009851",
 		Key:          "8934e7d15453e97507ef794cf7b0519d",
 		SignType:     "MD5",
@@ -18,10 +18,10 @@ var (
 )
 
 func TestNewWechatApiUnifiedOrder(t *testing.T) {
-	wechatApi := NewWechatApi(conf)
-	order := WechatApiOrder{
+	wechatApi := NewWxpayApi(conf)
+	order := WxpayUnifiedOrderRequest{
 		AppID:     "wx426b3015555a46be",
-		TradeType: WechatTradeTypeNative,
+		TradeType: WxpayTradeTypeNative,
 		OrderNo:   orderNo,
 		Amount:    1,
 		Currency:  "CNY",
@@ -40,11 +40,12 @@ func TestNewWechatApiUnifiedOrder(t *testing.T) {
 }
 
 func TestWechatApi_OrderQuery(t *testing.T) {
-	wechatApi := NewWechatApi(conf)
+	wechatApi := NewWxpayApi(conf)
 	response, raw, err := wechatApi.OrderQuery("wx426b3015555a46be", orderNo, "")
 	t.Log(string(raw))
 	t.Log(response)
 	if err != nil {
+		t.Log(err.Error())
 		t.Fail()
 	}
 }

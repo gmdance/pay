@@ -21,29 +21,29 @@ import (
 )
 
 const (
-	wechatSuccess              = "SUCCESS"
-	wechatFail                 = "FAIL"
-	WechatTradeStateSuccess    = "SUCCESS"
-	WechatTradeStateRefund     = "REFUND"
-	WechatTradeStateNopay      = "NOTPAY"
-	WechatTradeStateClosed     = "CLOSED"
-	WechatTradeStateRevoked    = "REVOKED"
-	WechatTradeStateUserPaying = "USERPAYING"
-	WechatTradeStatePayError   = "PAYERROR"
+	WxpaySuccess              = "SUCCESS"
+	WxpayFail                 = "FAIL"
+	WxpayTradeStateSuccess    = "SUCCESS"
+	WxpayTradeStateRefund     = "REFUND"
+	WxpayTradeStateNopay      = "NOTPAY"
+	WxpayTradeStateClosed     = "CLOSED"
+	WxpayTradeStateRevoked    = "REVOKED"
+	WxpayTradeStateUserPaying = "USERPAYING"
+	WxpayTradeStatePayError   = "PAYERROR"
 
-	wechatHost             = "https://api.mch.weixin.qq.com"
-	wechatPathUnifiedOrder = "/pay/unifiedorder"
-	wechatPathRefund       = "/secapi/pay/refund"
-	wechatPathOrderQuery   = "/pay/orderquery"
+	wxpayHost             = "https://api.mch.weixin.qq.com"
+	wxpayPathUnifiedOrder = "/pay/unifiedorder"
+	wxpayPathRefund       = "/secapi/pay/refund"
+	wxpayPathOrderQuery   = "/pay/orderquery"
 
-	WechatTradeTypeNative = "NATIVE"
+	WxpayTradeTypeNative = "NATIVE"
 )
 
-type wechatApi struct {
-	conf config.WechatConfig
+type WxpayApi struct {
+	conf config.WxpayConfig
 }
 
-type wechatError struct {
+type WxpayError struct {
 	ReturnCode string `xml:"return_code"`
 	ReturnMsg  string `xml:"return_msg"`
 	ResultCode string `xml:"result_code"`
@@ -58,16 +58,16 @@ type wechatError struct {
 	DeviceInfo string `xml:"device_info"`
 }
 
-func NewWechatApi(conf config.WechatConfig) (*wechatApi) {
+func NewWxpayApi(conf config.WxpayConfig) (*WxpayApi) {
 	if conf.SignType == "" {
 		conf.SignType = "MD5"
 	}
-	return &wechatApi{
+	return &WxpayApi{
 		conf: conf,
 	}
 }
 
-func (wa *wechatApi) sign(data map[string]string) string {
+func (wa *WxpayApi) Sign(data map[string]string) string {
 	var keys []string
 	for k := range data {
 		keys = append(keys, k)
@@ -103,12 +103,12 @@ func (wa *wechatApi) sign(data map[string]string) string {
 	return sign
 }
 
-func (wa *wechatApi) Post(api string, data map[string]string) (map[string]string, []byte, error) {
-	apiURL := wechatHost + path.Join("/", api)
+func (wa *WxpayApi) Post(api string, data map[string]string) (map[string]string, []byte, error) {
+	apiURL := wxpayHost + path.Join("/", api)
 	data["mch_id"] = wa.conf.MchID
 	data["sign_type"] = wa.conf.SignType
 	data["nonce_str"] = strconv.Itoa(rand.New(rand.NewSource(time.Now().Unix())).Int())
-	sign := wa.sign(data)
+	sign := wa.Sign(data)
 	data["sign"] = sign
 	raw, err := xml.Marshal(utils.Xml(data))
 	if err != nil {
@@ -123,21 +123,21 @@ func (wa *wechatApi) Post(api string, data map[string]string) (map[string]string
 	if err != nil {
 		return nil, body, err
 	}
-	if resultMap["return_code"] != wechatSuccess {
+	if resultMap["return_code"] != WxpaySuccess {
 		return resultMap, body, errors.New("微信通讯失败:" + resultMap["return_msg"])
 	}
-	checkSign := wa.sign(resultMap)
+	checkSign := wa.Sign(resultMap)
 	if checkSign != resultMap["sign"] {
 		return resultMap, body, errors.New("微信返回签名失败")
 	}
-	if resultMap["result_code"] != wechatSuccess {
+	if resultMap["result_code"] != WxpaySuccess {
 		return resultMap, body, errors.New(fmt.Sprintf("微信业务失败:%s(%s)", resultMap["err_code_des"], resultMap["err_code"]))
 	}
 	return resultMap, body, nil
 }
 
 //统一下单接口
-type WechatApiOrder struct {
+type WxpayUnifiedOrderRequest struct {
 	AppID     string //小程序或公众号appId 必填
 	TradeType string //交易类型 必填
 	OrderNo   string //订单编号 必填
@@ -150,14 +150,14 @@ type WechatApiOrder struct {
 	Detail    string //商品详细 不必填
 }
 
-type WechatUnifiedOrderResponse struct {
-	wechatError
+type WxpayUnifiedOrderResponse struct {
+	WxpayError
 	TradeType string `xml:"trade_type"`
 	PrepayID  string `xml:"prepay_id"`
 	CodeURL   string `xml:"code_url"`
 }
 
-func (wa *wechatApi) UnifiedOrder(order WechatApiOrder) (WechatUnifiedOrderResponse, []byte, error) {
+func (wa *WxpayApi) UnifiedOrder(order WxpayUnifiedOrderRequest) (WxpayUnifiedOrderResponse, []byte, error) {
 	data := map[string]string{
 		"appid":            order.AppID,
 		"body":             order.Body,
@@ -170,15 +170,15 @@ func (wa *wechatApi) UnifiedOrder(order WechatApiOrder) (WechatUnifiedOrderRespo
 		"product_id":       order.ProductID,
 		"openid":           order.OpenID,
 	}
-	var response WechatUnifiedOrderResponse
-	_, raw, err := wa.Post(wechatPathUnifiedOrder, data)
+	var response WxpayUnifiedOrderResponse
+	_, raw, err := wa.Post(wxpayPathUnifiedOrder, data)
 	xml.Unmarshal(raw, &response)
 	return response, raw, err
 }
 
 //查询订单接口
-type WechatOrderQueryResponse struct {
-	wechatError
+type WxpayOrderQueryResponse struct {
+	WxpayError
 	OpenID             string `xml:"open_id"`
 	IsSubscribe        string `xml:"is_subscribe"`
 	TradeType          string `xml:"trade_type"`
@@ -194,20 +194,20 @@ type WechatOrderQueryResponse struct {
 	TimeEnd            string `xml:"time_end"`
 }
 
-func (wa *wechatApi) OrderQuery(appID, orderNo, transactionId string) (WechatOrderQueryResponse, []byte, error) {
+func (wa *WxpayApi) OrderQuery(appID, orderNo, transactionId string) (WxpayOrderQueryResponse, []byte, error) {
 	data := map[string]string{
 		"appid":          appID,
 		"out_trade_no":   orderNo,
 		"transaction_id": transactionId,
 	}
-	_, raw, err := wa.Post(wechatPathOrderQuery, data)
-	var response WechatOrderQueryResponse
+	_, raw, err := wa.Post(wxpayPathOrderQuery, data)
+	var response WxpayOrderQueryResponse
 	xml.Unmarshal(raw, &response)
 	return response, raw, err
 }
 
 //退款接口
-type WechatApiRefund struct {
+type WxpayRefundRequest struct {
 	AppID        string
 	OrderNo      string
 	RefundNo     string
@@ -217,7 +217,7 @@ type WechatApiRefund struct {
 	RefundDesc   string
 }
 
-func (wa *wechatApi) Refund(refund WechatApiRefund) {
+func (wa *WxpayApi) Refund(refund WxpayRefundRequest) (map[string]string, []byte, error) {
 	data := map[string]string{
 		"appid":         refund.AppID,
 		"out_trade_no":  refund.OrderNo,
@@ -227,12 +227,12 @@ func (wa *wechatApi) Refund(refund WechatApiRefund) {
 		"notify_url":    wa.conf.RefundNotifyURL,
 		"refund_desc":   refund.RefundDesc,
 	}
-	wa.Post(wechatPathRefund, data)
+	return wa.Post(wxpayPathRefund, data)
 }
 
 //支付回调校验
 type WechatApiPayNotifyData struct {
-	wechatError
+	WxpayError
 	OpenID             string `xml:"openid"`
 	IsSubscribe        string `xml:"is_subscribe"`
 	TradeType          string `xml:"trade_type"`
@@ -247,14 +247,14 @@ type WechatApiPayNotifyData struct {
 	TimeEnd            string `xml:"time_end"`
 }
 
-func (wa *wechatApi) PayNotify(raw string) (*WechatApiPayNotifyData, error) {
+func (wa *WxpayApi) PayNotify(raw string) (*WechatApiPayNotifyData, error) {
 	rawBytes := []byte(raw)
 	data := make(map[string]string)
 	err := xml.Unmarshal(rawBytes, (*utils.Xml)(&data))
 	if err != nil {
 		return nil, err
 	}
-	sign := wa.sign(data)
+	sign := wa.Sign(data)
 	if sign != data["sign"] {
 		return nil, errors.New("微信支付回调签名失败")
 	}
@@ -263,6 +263,7 @@ func (wa *wechatApi) PayNotify(raw string) (*WechatApiPayNotifyData, error) {
 	return &notifyData, err
 }
 
-func (wa *wechatApi) NotifySuccess() string {
+//回调成功返回
+func (wa *WxpayApi) NotifySuccess() string {
 	return "<xml><return_code><![CDATA[SUCCESS]]></return_code><return_msg><![CDATA[OK]]></return_msg></xml>"
 }
