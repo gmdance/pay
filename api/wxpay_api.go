@@ -37,6 +37,8 @@ const (
 	wxpayPathOrderQuery   = "/pay/orderquery"
 
 	WxpayTradeTypeNative = "NATIVE"
+	WxpayTradeTypeJsapi  = "JSAPI"
+	WxpayTradeTypeApp    = "APP"
 )
 
 type WxpayApi struct {
@@ -104,6 +106,15 @@ func (wa *WxpayApi) Sign(data map[string]string) string {
 }
 
 func (wa *WxpayApi) Post(api string, data map[string]string) (map[string]string, []byte, error) {
+	if wa.conf.MchID == "" {
+		return nil, nil, errors.New("mchId未配置")
+	}
+	if wa.conf.SignType == "" {
+		return nil, nil, errors.New("signType未配置")
+	}
+	if wa.conf.Key == "" {
+		return nil, nil, errors.New("wxKey未配置")
+	}
 	apiURL := wxpayHost + path.Join("/", api)
 	data["mch_id"] = wa.conf.MchID
 	data["sign_type"] = wa.conf.SignType
@@ -157,7 +168,35 @@ type WxpayUnifiedOrderResponse struct {
 	CodeURL   string `xml:"code_url"`
 }
 
-func (wa *WxpayApi) UnifiedOrder(order WxpayUnifiedOrderRequest) (WxpayUnifiedOrderResponse, []byte, error) {
+func (wa *WxpayApi) UnifiedOrder(order WxpayUnifiedOrderRequest) (*WxpayUnifiedOrderResponse, []byte, error) {
+	if order.AppID == "" {
+		return nil, nil, errors.New("appId未填写")
+	}
+	if order.Body == "" {
+		return nil, nil, errors.New("body未填写")
+	}
+	if order.OrderNo == "" {
+		return nil, nil, errors.New("orderNo未填写")
+	}
+	if order.Amount == 0 {
+		return nil, nil, errors.New("amount未填写")
+	}
+	if order.ClientIP == "" {
+		return nil, nil, errors.New("clientIp未填写")
+	}
+	if order.TradeType == "" {
+		return nil, nil, errors.New("tradeType未填写")
+	}
+	if order.TradeType == WxpayTradeTypeNative {
+		if order.ProductID == "" {
+			return nil, nil, errors.New("productId未填写")
+		}
+	} else if order.TradeType == WxpayTradeTypeJsapi {
+		if order.OpenID == "" {
+			return nil, nil, errors.New("openId未填写")
+		}
+	}
+
 	data := map[string]string{
 		"appid":            order.AppID,
 		"body":             order.Body,
@@ -173,7 +212,7 @@ func (wa *WxpayApi) UnifiedOrder(order WxpayUnifiedOrderRequest) (WxpayUnifiedOr
 	var response WxpayUnifiedOrderResponse
 	_, raw, err := wa.Post(wxpayPathUnifiedOrder, data)
 	xml.Unmarshal(raw, &response)
-	return response, raw, err
+	return &response, raw, err
 }
 
 //查询订单接口
@@ -194,7 +233,10 @@ type WxpayOrderQueryResponse struct {
 	TimeEnd            string `xml:"time_end"`
 }
 
-func (wa *WxpayApi) OrderQuery(appID, orderNo, transactionId string) (WxpayOrderQueryResponse, []byte, error) {
+func (wa *WxpayApi) OrderQuery(appID, orderNo, transactionId string) (*WxpayOrderQueryResponse, []byte, error) {
+	if orderNo == "" && transactionId == "" {
+		return nil, nil, errors.New("orderNo和transactionId必须填写一项")
+	}
 	data := map[string]string{
 		"appid":          appID,
 		"out_trade_no":   orderNo,
@@ -203,7 +245,7 @@ func (wa *WxpayApi) OrderQuery(appID, orderNo, transactionId string) (WxpayOrder
 	_, raw, err := wa.Post(wxpayPathOrderQuery, data)
 	var response WxpayOrderQueryResponse
 	xml.Unmarshal(raw, &response)
-	return response, raw, err
+	return &response, raw, err
 }
 
 //退款接口
@@ -231,7 +273,7 @@ func (wa *WxpayApi) Refund(refund WxpayRefundRequest) (map[string]string, []byte
 }
 
 //支付回调校验
-type WechatApiPayNotifyData struct {
+type WxpayApiPayNotifyData struct {
 	WxpayError
 	OpenID             string `xml:"openid"`
 	IsSubscribe        string `xml:"is_subscribe"`
@@ -247,7 +289,7 @@ type WechatApiPayNotifyData struct {
 	TimeEnd            string `xml:"time_end"`
 }
 
-func (wa *WxpayApi) PayNotify(raw string) (*WechatApiPayNotifyData, error) {
+func (wa *WxpayApi) PayNotify(raw string) (*WxpayApiPayNotifyData, error) {
 	rawBytes := []byte(raw)
 	data := make(map[string]string)
 	err := xml.Unmarshal(rawBytes, (*utils.Xml)(&data))
@@ -258,7 +300,7 @@ func (wa *WxpayApi) PayNotify(raw string) (*WechatApiPayNotifyData, error) {
 	if sign != data["sign"] {
 		return nil, errors.New("微信支付回调签名失败")
 	}
-	var notifyData WechatApiPayNotifyData
+	var notifyData WxpayApiPayNotifyData
 	err = xml.Unmarshal(rawBytes, &notifyData)
 	return &notifyData, err
 }
