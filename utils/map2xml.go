@@ -23,7 +23,10 @@ func (m Xml) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 		return err
 	}
 	for k, v := range m {
-		e.Encode(xmlMapEntry{XMLName: xml.Name{Local: k}, Value: v})
+		err := e.Encode(xmlMapEntry{XMLName: xml.Name{Local: k}, Value: v})
+		if err != nil {
+			return err
+		}
 	}
 	return e.EncodeToken(start.End())
 }

@@ -6,6 +6,10 @@ import (
 	"net/http"
 )
 
+func Request()  {
+	
+}
+
 func Post(URL string, contentType string, raw []byte) ([]byte, error) {
 	resp, err := http.Post(URL, contentType, bytes.NewReader(raw))
 	if err != nil {
