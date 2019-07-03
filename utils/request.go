@@ -6,11 +6,11 @@ import (
 	"net/http"
 )
 
-func Request()  {
-	
+func Request() {
+
 }
 
-func Post(URL string, contentType string, raw []byte) ([]byte, error) {
+func HttpPost(URL string, contentType string, raw []byte) ([]byte, error) {
 	resp, err := http.Post(URL, contentType, bytes.NewReader(raw))
 	if err != nil {
 		return nil, err
@@ -19,7 +19,7 @@ func Post(URL string, contentType string, raw []byte) ([]byte, error) {
 	return ioutil.ReadAll(resp.Body)
 }
 
-func Get(URL string) ([]byte, error) {
+func HttpGet(URL string) ([]byte, error) {
 	resp, err := http.Get(URL)
 	if err != nil {
 		return nil, err

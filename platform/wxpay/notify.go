@@ -3,12 +3,13 @@ package wxpay
 import (
 	"encoding/xml"
 	"errors"
+	"fmt"
 	"github.com/gmdance/pay/utils"
 )
 
 //支付回调校验
 type NotifyPayResp struct {
-	WxpayError
+	WxpayResp
 	OpenID             string `xml:"openid"`
 	IsSubscribe        string `xml:"is_subscribe"`
 	TradeType          string `xml:"trade_type"`
@@ -38,4 +39,14 @@ func (wxpay *Wxpay) NotifyPay(raw string) (*NotifyPayResp, error) {
 	var notifyData NotifyPayResp
 	err = xml.Unmarshal(rawBytes, &notifyData)
 	return &notifyData, err
+}
+
+//回调成功返回
+func (wxpay *Wxpay) NotifySuccess() string {
+	return "<xml><return_code><![CDATA[SUCCESS]]></return_code><return_msg><![CDATA[OK]]></return_msg></xml>"
+}
+
+//回调失败返回
+func (wxpay *Wxpay) NotifyFail(message string) string {
+	return fmt.Sprintf("<xml><return_code><![CDATA[FAIL]]></return_code><return_msg><![CDATA[%s]]></return_msg></xml>", message)
 }

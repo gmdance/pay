@@ -1,6 +1,7 @@
 package alipay
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
@@ -11,9 +12,10 @@ import (
 	"encoding/pem"
 	"errors"
 	"hash"
+	"strings"
 )
 
-func Sign(data []byte, signType, privateKey string) (string, error) {
+func OpenSSLSign(data []byte, signType, privateKey string) (string, error) {
 	var h hash.Hash
 	var hType crypto.Hash
 	if signType == SignTypeRSA {
@@ -25,12 +27,11 @@ func Sign(data []byte, signType, privateKey string) (string, error) {
 	}
 	h.Write(data)
 	d := h.Sum(nil)
-	pk, err := ParsePrivateKey(privateKey)
+	pk, err := ParsePrivateKey(FormatPrivateKey(privateKey))
 	if err != nil {
 		return "", err
 	}
 	bs, err := rsa.SignPKCS1v15(rand.Reader, pk, hType, d)
-
 	if err != nil {
 		return "", err
 	}
@@ -38,20 +39,96 @@ func Sign(data []byte, signType, privateKey string) (string, error) {
 	return signature, nil
 }
 
-func ParsePrivateKey(privateKey string) (pk *rsa.PrivateKey, err error) {
-	block, _ := pem.Decode([]byte(privateKey))
+func OpenSSLVerify(data, sign []byte, signType, publicKey string) error {
+	var h hash.Hash
+	var hType crypto.Hash
+	if signType == SignTypeRSA {
+		h = sha1.New()
+		hType = crypto.SHA1
+	} else {
+		h = sha256.New()
+		hType = crypto.SHA256
+	}
+	h.Write(data)
+	d := h.Sum(nil)
+	pk, err := ParsePublicKey(FormatPublicKey(publicKey))
+	if err != nil {
+		return err
+	}
+	return rsa.VerifyPKCS1v15(pk, hType, d, sign)
+}
+
+func ParsePrivateKey(privateKey []byte) (*rsa.PrivateKey, error) {
+	block, _ := pem.Decode(privateKey)
 	if block == nil {
-		err = errors.New("私钥格式错误1:" + privateKey)
+		err := errors.New("private key error:" + string(privateKey))
 		return nil, err
 	}
-	switch block.Type {
-	case "RSA PRIVATE KEY":
-		rsaPrivateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
-		if err == nil {
-			pk = rsaPrivateKey
-		}
-	default:
-		err = errors.New("私钥格式错误2:" + privateKey)
+	key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	if err != nil {
+		return nil, err
 	}
-	return
+	return key, err
+}
+
+func ParsePublicKey(publicKey []byte) (key *rsa.PublicKey, err error) {
+	var block *pem.Block
+	block, _ = pem.Decode(publicKey)
+	if block == nil {
+		return nil, errors.New("public key error")
+	}
+
+	var pubInterface interface{}
+	pubInterface, err = x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	key, ok := pubInterface.(*rsa.PublicKey)
+	if !ok {
+		return nil, errors.New("public key error")
+	}
+
+	return key, err
+}
+
+func FormatPublicKey(raw string) (result []byte) {
+	return formatKey(raw, "-----BEGIN PUBLIC KEY-----", "-----END PUBLIC KEY-----")
+}
+
+func FormatPrivateKey(raw string) (result []byte) {
+	return formatKey(raw, "-----BEGIN RSA PRIVATE KEY-----", "-----END RSA PRIVATE KEY-----")
+}
+
+func formatKey(raw, prefix, suffix string) (result []byte) {
+	if raw == "" {
+		return nil
+	}
+	raw = strings.Replace(raw, prefix, "", 1)
+	raw = strings.Replace(raw, suffix, "", 1)
+	raw = strings.Replace(raw, " ", "", -1)
+	raw = strings.Replace(raw, "\n", "", -1)
+	raw = strings.Replace(raw, "\r", "", -1)
+	raw = strings.Replace(raw, "\t", "", -1)
+
+	var ll = 64
+	var sl = len(raw)
+	var c = sl / ll
+	if sl%ll > 0 {
+		c = c + 1
+	}
+
+	var buf bytes.Buffer
+	buf.WriteString(prefix + "\n")
+	for i := 0; i < c; i++ {
+		var b = i * ll
+		var e = b + ll
+		if e > sl {
+			buf.WriteString(raw[b:])
+		} else {
+			buf.WriteString(raw[b:e])
+		}
+		buf.WriteString("\n")
+	}
+	buf.WriteString(suffix)
+	return buf.Bytes()
 }

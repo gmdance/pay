@@ -18,11 +18,14 @@ type TradePreCreateParams struct {
 	QrCodeTimeoutExpress string `json:"qr_code_timeout_express"` //该笔订单最晚付款时间
 }
 
-type TradePreCreateResp struct {
+type TradePreCreateResult struct {
+	Result
 	OutTradeNo string `json:"out_trade_no"` //商户订单号
 	QrCode     string `json:"qr_code"`      //支付二维码
 }
 
-func (alipay *Alipay) TradePreCreate(params TradePreCreateParams) (TradePreCreateResp, error) {
-
+func (alipay *Alipay) TradePreCreate(bizContent TradePreCreateParams) (*TradePreCreateResult, error) {
+	var result TradePreCreateResult
+	_, err := alipay.Request(MethodTradePreCreate, bizContent, &result)
+	return &result, err
 }

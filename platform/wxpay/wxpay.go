@@ -44,7 +44,7 @@ type Wxpay struct {
 	conf Config
 }
 
-type WxpayError struct {
+type WxpayResp struct {
 	ReturnCode string `xml:"return_code"`
 	ReturnMsg  string `xml:"return_msg"`
 	ResultCode string `xml:"result_code"`
@@ -78,7 +78,7 @@ func (wxpay *Wxpay) SignParams(data map[string]string) string {
 	for _, k := range keys {
 		value := data[k]
 		value = strings.TrimSpace(value)
-		if value== "" || k == "sign" {
+		if value == "" || k == "sign" {
 			continue
 		}
 		if buff.Len() != 0 {
@@ -125,7 +125,7 @@ func (wxpay *Wxpay) Request(api string, data map[string]string) (map[string]stri
 	if err != nil {
 		return nil, nil, err
 	}
-	body, err := utils.Post(apiURL, "application/xml", raw)
+	body, err := utils.HttpPost(apiURL, "application/xml", raw)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -145,14 +145,4 @@ func (wxpay *Wxpay) Request(api string, data map[string]string) (map[string]stri
 		return resultMap, body, errors.New(fmt.Sprintf("微信业务失败:%s(%s)", resultMap["err_code_des"], resultMap["err_code"]))
 	}
 	return resultMap, body, nil
-}
-
-//回调成功返回
-func (wxpay *Wxpay) NotifySuccess() string {
-	return "<xml><return_code><![CDATA[SUCCESS]]></return_code><return_msg><![CDATA[OK]]></return_msg></xml>"
-}
-
-//回调失败返回
-func (wxpay *Wxpay) NotifyFail(message string) string {
-	return fmt.Sprintf("<xml><return_code><![CDATA[FAIL]]></return_code><return_msg><![CDATA[%s]]></return_msg></xml>", message)
 }

@@ -1,25 +1,26 @@
 package alipay
 
 import (
-	"encoding/json"
 	"fmt"
+	"strconv"
 	"testing"
+	"time"
 )
 
-func testError() (a []byte ,err error) {
-	a, err = json.Marshal("aga")
-	if err == nil {
-		_, err = json.Marshal("{aga}")
-	}
-	return
-}
+var orderNo = strconv.FormatInt(time.Now().Unix(), 10)
 
 func TestNewAlipay(t *testing.T) {
-	_, err := json.Marshal("aga")
-	if err == nil {
-		fmt.Println(err)
-		_, err := testError()
-		fmt.Println(err)
+	conf := Config{
+		AppID:           "2018041002529877",
+		SignType:        SignTypeRSA2,
+		AlipayPublicKey: "",
+		AppPrivateKey: ``,
 	}
-	fmt.Println(err)
+	alipay := NewAlipay(conf)
+	params := TradePreCreateParams{
+		OutTradeNo:  orderNo,
+		TotalAmount: "1",
+		Subject:     "测试",
+	}
+	fmt.Println(alipay.TradePreCreate(params))
 }

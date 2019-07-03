@@ -35,7 +35,7 @@ type UnifiedOrderParams struct {
 }
 
 type UnifiedOrderResp struct {
-	WxpayError
+	WxpayResp
 	TradeType string `xml:"trade_type"`
 	PrepayID  string `xml:"prepay_id"`
 	CodeURL   string `xml:"code_url"`

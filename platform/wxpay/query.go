@@ -7,7 +7,7 @@ import (
 
 //查询订单接口
 type OrderQueryResp struct {
-	WxpayError
+	WxpayResp
 	OpenID             string `xml:"open_id"`
 	IsSubscribe        string `xml:"is_subscribe"`
 	TradeType          string `xml:"trade_type"`
