@@ -24,8 +24,8 @@ type TradePreCreateResult struct {
 	QrCode     string `json:"qr_code"`      //支付二维码
 }
 
-func (alipay *Alipay) TradePreCreate(bizContent TradePreCreateParams) (*TradePreCreateResult, error) {
+func (alipay *Alipay) TradePreCreate(bizContent TradePreCreateParams) (*TradePreCreateResult, string, error) {
 	var result TradePreCreateResult
-	_, err := alipay.Request(MethodTradePreCreate, bizContent, &result)
-	return &result, err
+	data, err := alipay.Request(MethodTradePreCreate, bizContent, &result)
+	return &result, data, err
 }

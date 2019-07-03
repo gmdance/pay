@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"github.com/gmdance/pay/utils"
 	"net/url"
 	"sort"
@@ -35,8 +36,6 @@ type Alipay struct {
 type Resp struct {
 	Sign string `json:"sign"`
 }
-
-
 
 func NewAlipay(conf Config) (*Alipay) {
 	return &Alipay{
@@ -118,7 +117,7 @@ func (alipay *Alipay) ParseJsonResponse(responseContent, nodeName string, nodeIn
 	return signData, sign
 }
 
-func (alipay *Alipay) Request(method string, bizContent interface{}, resp interface{}) (string, error) {
+func (alipay *Alipay) Request(method string, bizContent interface{}, resp interface{}) (data string, e error) {
 	params, err := alipay.BuildQuery(method, bizContent)
 	if err != nil {
 		return "", err
@@ -127,7 +126,7 @@ func (alipay *Alipay) Request(method string, bizContent interface{}, resp interf
 	if err != nil {
 		return "", err
 	}
-	data := string(raw)
+	data = string(raw)
 	rootNodeName := strings.Replace(method, ".", "_", -1) + alipay.responseSuffix
 	rootIndex := strings.Index(data, rootNodeName)
 	errorIndex := strings.Index(data, alipay.errorResponse)
@@ -145,12 +144,11 @@ func (alipay *Alipay) Request(method string, bizContent interface{}, resp interf
 			return data, err
 		}
 	}
-	if resp != nil {
-		err := json.Unmarshal([]byte(content), resp)
-		if err != nil {
-			return data, err
-		}
+	if strings.Index(data, "\"code\":\"10000\"") < 0 {
+		e = errors.New("not success")
 	}
-	return data, nil
+	if resp != nil {
+		e = json.Unmarshal([]byte(content), resp)
+	}
+	return
 }
-

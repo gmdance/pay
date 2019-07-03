@@ -13,8 +13,8 @@ type RefundParams struct {
 	RefundDesc   string
 }
 
-func (wxpay *Wxpay) Refund(refund RefundParams) (map[string]string, []byte, error) {
-	data := map[string]string{
+func (wxpay *Wxpay) Refund(refund RefundParams) (string, error) {
+	params := map[string]string{
 		"appid":         refund.AppID,
 		"out_trade_no":  refund.OrderNo,
 		"out_refund_no": refund.RefundNo,
@@ -23,5 +23,5 @@ func (wxpay *Wxpay) Refund(refund RefundParams) (map[string]string, []byte, erro
 		"notify_url":    wxpay.conf.RefundNotifyURL,
 		"refund_desc":   refund.RefundDesc,
 	}
-	return wxpay.Request(UriPathRefund, data)
+	return wxpay.Request(UriPathRefund, params, nil)
 }

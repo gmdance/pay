@@ -105,44 +105,49 @@ func (wxpay *Wxpay) SignParams(data map[string]string) string {
 	return sign
 }
 
-func (wxpay *Wxpay) Request(api string, data map[string]string) (map[string]string, []byte, error) {
+func (wxpay *Wxpay) Request(api string, params map[string]string, resp interface{}) (data string, e error) {
+	data = ""
 	if wxpay.conf.MchID == "" {
-		return nil, nil, errors.New("mchId未配置")
+		return data, errors.New("mchId未配置")
 	}
 	if wxpay.conf.SignType == "" {
-		return nil, nil, errors.New("signType未配置")
+		return data, errors.New("signType未配置")
 	}
 	if wxpay.conf.Key == "" {
-		return nil, nil, errors.New("wxKey未配置")
+		return data, errors.New("wxKey未配置")
 	}
 	apiURL := MainHost + path.Join("/", api)
-	data["mch_id"] = wxpay.conf.MchID
-	data["sign_type"] = wxpay.conf.SignType
-	data["nonce_str"] = strconv.Itoa(rand.New(rand.NewSource(time.Now().Unix())).Int())
-	sign := wxpay.SignParams(data)
-	data["sign"] = sign
-	raw, err := xml.Marshal(utils.Xml(data))
+	params["mch_id"] = wxpay.conf.MchID
+	params["sign_type"] = wxpay.conf.SignType
+	params["nonce_str"] = strconv.Itoa(rand.New(rand.NewSource(time.Now().Unix())).Int())
+	sign := wxpay.SignParams(params)
+	params["sign"] = sign
+	raw, err := xml.Marshal(utils.Xml(params))
 	if err != nil {
-		return nil, nil, err
+		return data, err
 	}
 	body, err := utils.HttpPost(apiURL, "application/xml", raw)
 	if err != nil {
-		return nil, nil, err
+		return data, err
 	}
+	data = string(body)
 	resultMap := make(map[string]string)
 	err = xml.Unmarshal(body, (*utils.Xml)(&resultMap))
 	if err != nil {
-		return nil, body, err
+		return data, err
 	}
 	if resultMap["return_code"] != WxpaySuccess {
-		return resultMap, body, errors.New("微信通讯失败:" + resultMap["return_msg"])
+		return data, errors.New("微信通讯失败:" + resultMap["return_msg"])
 	}
 	checkSign := wxpay.SignParams(resultMap)
 	if checkSign != resultMap["sign"] {
-		return resultMap, body, errors.New("微信返回签名失败")
+		return data, errors.New("微信返回签名失败")
 	}
 	if resultMap["result_code"] != WxpaySuccess {
-		return resultMap, body, errors.New(fmt.Sprintf("微信业务失败:%s(%s)", resultMap["err_code_des"], resultMap["err_code"]))
+		return data, errors.New(fmt.Sprintf("微信业务失败:%s(%s)", resultMap["err_code_des"], resultMap["err_code"]))
 	}
-	return resultMap, body, nil
+	if resp != nil {
+		e = xml.Unmarshal(raw, &resp)
+	}
+	return
 }

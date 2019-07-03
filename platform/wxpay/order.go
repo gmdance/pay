@@ -1,7 +1,6 @@
 package wxpay
 
 import (
-	"encoding/xml"
 	"errors"
 	"strconv"
 )
@@ -41,36 +40,35 @@ type UnifiedOrderResp struct {
 	CodeURL   string `xml:"code_url"`
 }
 
-func (wxpay *Wxpay) UnifiedOrder(order UnifiedOrderParams) (*UnifiedOrderResp, []byte, error) {
+func (wxpay *Wxpay) UnifiedOrder(order UnifiedOrderParams) (*UnifiedOrderResp, string, error) {
 	if order.AppID == "" {
-		return nil, nil, errors.New("appId未填写")
+		return nil, "", errors.New("appId未填写")
 	}
 	if order.Body == "" {
-		return nil, nil, errors.New("body未填写")
+		return nil, "", errors.New("body未填写")
 	}
 	if order.OutTradeNo == "" {
-		return nil, nil, errors.New("orderNo未填写")
+		return nil, "", errors.New("orderNo未填写")
 	}
 	if order.TotalFee == 0 {
-		return nil, nil, errors.New("amount未填写")
+		return nil, "", errors.New("amount未填写")
 	}
 	if order.SpbillCreateIp == "" {
-		return nil, nil, errors.New("clientIp未填写")
+		return nil, "", errors.New("clientIp未填写")
 	}
 	if order.TradeType == "" {
-		return nil, nil, errors.New("tradeType未填写")
+		return nil, "", errors.New("tradeType未填写")
 	}
 	if order.TradeType == WxpayTradeTypeNative {
 		if order.ProductID == "" {
-			return nil, nil, errors.New("productId未填写")
+			return nil, "", errors.New("productId未填写")
 		}
 	} else if order.TradeType == WxpayTradeTypeJsapi {
 		if order.OpenID == "" {
-			return nil, nil, errors.New("openId未填写")
+			return nil, "", errors.New("openId未填写")
 		}
 	}
-
-	data := map[string]string{
+	params := map[string]string{
 		"appid":            order.AppID,
 		"body":             order.Body,
 		"detail":           order.Detail,
@@ -83,7 +81,6 @@ func (wxpay *Wxpay) UnifiedOrder(order UnifiedOrderParams) (*UnifiedOrderResp, [
 		"openid":           order.OpenID,
 	}
 	var response UnifiedOrderResp
-	_, raw, err := wxpay.Request(UriPathUnifiedOrder, data)
-	xml.Unmarshal(raw, &response)
-	return &response, raw, err
+	data, err := wxpay.Request(UriPathUnifiedOrder, params, &response)
+	return &response, data, err
 }
