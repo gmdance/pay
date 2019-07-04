@@ -122,11 +122,11 @@ func (wxpay *Wxpay) Request(api string, params map[string]string, resp interface
 	params["nonce_str"] = strconv.Itoa(rand.New(rand.NewSource(time.Now().Unix())).Int())
 	sign := wxpay.SignParams(params)
 	params["sign"] = sign
-	raw, err := xml.Marshal(utils.Xml(params))
+	rawBody, err := xml.Marshal(utils.Xml(params))
 	if err != nil {
 		return data, err
 	}
-	body, err := utils.HttpPost(apiURL, "application/xml", raw)
+	body, err := utils.HttpPost(apiURL, "application/xml", rawBody)
 	if err != nil {
 		return data, err
 	}
@@ -147,7 +147,7 @@ func (wxpay *Wxpay) Request(api string, params map[string]string, resp interface
 		return data, errors.New(fmt.Sprintf("微信业务失败:%s(%s)", resultMap["err_code_des"], resultMap["err_code"]))
 	}
 	if resp != nil {
-		e = xml.Unmarshal(raw, &resp)
+		e = xml.Unmarshal(body, resp)
 	}
 	return
 }

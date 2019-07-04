@@ -6,12 +6,8 @@ import (
 	"net/http"
 )
 
-func Request() {
-
-}
-
-func HttpPost(URL string, contentType string, raw []byte) ([]byte, error) {
-	resp, err := http.Post(URL, contentType, bytes.NewReader(raw))
+func HttpPost(URL string, contentType string, rawBody []byte) ([]byte, error) {
+	resp, err := http.Post(URL, contentType, bytes.NewReader(rawBody))
 	if err != nil {
 		return nil, err
 	}

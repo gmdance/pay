@@ -1,6 +1,7 @@
 package wxpay
 
 import (
+	"fmt"
 	"strconv"
 	"testing"
 	"time"
@@ -30,19 +31,16 @@ func TestNewWechatApiUnifiedOrder(t *testing.T) {
 		OpenID:         "",
 		Detail:         "detail",
 	}
-	response, raw, err := wechatApi.UnifiedOrder(order)
-	t.Log(string(raw))
-	t.Log(response)
+	resp, _, err := wechatApi.UnifiedOrder(order)
 	if err != nil {
 		t.Fail()
 	}
+	fmt.Println(resp)
 }
 
 func TestWechatApi_OrderQuery(t *testing.T) {
 	wechatApi := NewWxpay(conf)
-	response, raw, err := wechatApi.OrderQuery("wx426b3015555a46be", orderNo, "")
-	t.Log(string(raw))
-	t.Log(response)
+	_, _, err := wechatApi.OrderQuery("wx426b3015555a46be", orderNo, "")
 	if err != nil {
 		t.Log(err.Error())
 		t.Fail()
